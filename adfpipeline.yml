@@ -1,1 +1,47 @@
+trigger:
+  branches:
+    include:
+      - main
 
+stages:
+- stage: Dev
+  jobs:
+  - job: DeployToDev
+    steps:
+    - checkout: self
+    - task: AzureResourceManagerTemplateDeployment@3
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'MyAzureServiceConnection'
+        subscriptionId: 'b874f850-f33d-4ab1-b606-7baa68ec3851'
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: 'dev-adf-rg'
+        location: 'Centralindia'
+        templateLocation: 'Linked artifact'
+        csmFile: 'ADF/ARMTemplateForFactory.json'
+        csmParametersFile: 'ADF/ARMTemplateParametersForFactory.json'
+        deploymentMode: 'Incremental'
+
+- stage: Prod
+  dependsOn: Dev
+  condition: succeeded()
+  jobs:
+  - deployment: DeployToProd
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          - task: AzureResourceManagerTemplateDeployment@3
+            inputs:
+              deploymentScope: 'Resource Group'
+              azureResourceManagerConnection: 'MyAzureServiceConnection'
+              subscriptionId: 'b874f850-f33d-4ab1-b606-7baa68ec3851'
+              action: 'Create Or Update Resource Group'
+              resourceGroupName: 'prod-adf-rg'
+              location: 'Centralindia'
+              templateLocation: 'Linked artifact'
+              csmFile: 'ADF/ARMTemplateForFactory.json'
+              csmParametersFile: 'ADF/ARMTemplateParametersForFactory.json'
+              deploymentMode: 'Incremental'
